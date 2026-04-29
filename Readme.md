@@ -1,21 +1,22 @@
+````md
 # URL Shortener with MongoDB & Redis Caching
 
-A production-style URL Shortener backend built in Go, featuring random TinyURL-style short codes, MongoDB persistent storage, Redis caching, custom aliases, URL validation, and scalable architecture.
+A production-style URL Shortener backend built in Go, featuring random TinyURL-style short codes, MongoDB persistent storage, Redis caching, custom aliases, URL validation, and scalable project architecture.
 
 ---
 
 ## Architecture Overview
 
-### Redirect Flow
+### Request Flow
 
 ```mermaid
 graph TD
-    Client --> API[Go Server]
+    Client --> API[Go HTTP Server]
     API --> Redis[Redis Cache]
-    Redis -->|Hit| Redirect[Redirect User]
-    Redis -->|Miss| MongoDB[MongoDB]
-    MongoDB --> API
-    API --> Redirect
+    Redis -->|Cache Miss| MongoDB[MongoDB Database]
+    Redis -->|Cache Hit| Redirect[Instant Redirect]
+    MongoDB --> Redirect
+````
 
 ---
 
