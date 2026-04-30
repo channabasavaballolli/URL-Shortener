@@ -1,6 +1,3 @@
-Here’s your **updated `README.md`** with all the new features you implemented (API keys, auth middleware, rate limiting, expiry) — clean, professional, and ready for GitHub.
-
----
 
 ````md
 # URL Shortener with MongoDB, Redis, API Keys & Rate Limiting
