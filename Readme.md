@@ -1,4 +1,4 @@
-````md
+
 # URL Shortener (Go + MongoDB + Redis)
 
 A production-style URL shortener backend built in Go with API key authentication, Redis caching, and rate limiting.
