@@ -18,24 +18,6 @@ A highly scalable, production-grade URL Shortener backend service built in **Go*
 
 The application is structured using a clean, layered architecture separating routing, middleware, handlers, services, and data access.
 
-```mermaid
-graph TD
-    Client([Client HTTP Request]) --> Router[HTTP Router]
-    Router --> APIKeyAuth{API Key Valid?}
-    APIKeyAuth -- No --> 401[401 Unauthorized]
-    APIKeyAuth -- Yes --> RateLimit{Rate Limit < 10?}
-    RateLimit -- No --> 429[429 Too Many Requests]
-    RateLimit -- Yes --> Handler[URL Handler]
-    
-    Handler --> |Shorten Request| Mongo[(MongoDB)]
-    
-    Handler --> |Redirect Request| RedisCache{Redis Cache}
-    RedisCache -- Hit --> 302[302 Redirect]
-    RedisCache -- Miss --> Mongo
-    Mongo --> |Save to Cache| RedisCache
-    Mongo --> 302
-```
-
 ## 🛠️ Technology Stack
 
 - **Language**: Go (Golang)
