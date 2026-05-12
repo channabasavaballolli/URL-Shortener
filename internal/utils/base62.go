@@ -21,7 +21,7 @@ import (
 // }
 
 func GenerateRandomCode(length int) string {
-	chars := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	chars := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" //currently used in my code for generating short urlcode
 
 	// rand.Seed(time.Now().UnixNano())
 

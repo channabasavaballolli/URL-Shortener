@@ -1,174 +1,157 @@
+# Enterprise URL Shortener Service
 
-# URL Shortener (Go + MongoDB + Redis)
+![Go](https://img.shields.io/badge/go-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
+![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
 
-A production-style URL shortener backend built in Go with API key authentication, Redis caching, and rate limiting.
-
-This project demonstrates how to design a scalable backend system using middleware, caching, and request control mechanisms.
-
----
+A highly scalable, production-grade URL Shortener backend service built in **Go**. This project demonstrates enterprise backend architecture patterns including cache-aside strategies, middleware-based request validation, API key authentication, and distributed rate limiting.
 
 ## Key Features
 
-- Short URL generation with optional custom aliases  
-- MongoDB for persistent storage  
-- Redis caching for fast redirects (cache-aside pattern)  
-- API key authentication using header (`X-API-Key`)  
-- 30-day API key expiration  
-- Redis-based rate limiting (fixed window: 10 req/min per key)  
-- Clean modular architecture (`handlers`, `db`, `models`, `middleware`, `services`)  
+- **Blazing Fast Redirects**: Implements a Cache-Aside pattern with Redis to ensure sub-millisecond redirect latency.
+- **Secure API Authentication**: Cryptographically secure API keys generated per client with configurable expiration dates (30 days).
+- **Distributed Rate Limiting**: Fixed-window rate limiting (10 requests/minute per API key) managed in Redis to prevent abuse.
+- **Custom URL Aliases**: Users can provide custom short codes (e.g., `/my-brand`) or rely on the secure Base62 random code generator.
+- **Data Integrity**: Enforced via MongoDB unique indexes for API keys and short codes.
 
----
+## System Architecture
 
-## How It Works
+The application is structured using a clean, layered architecture separating routing, middleware, handlers, services, and data access.
 
-### Short URL Flow
-
-1. Client sends request to `/shorten`
-2. API key is validated (MongoDB)
-3. Rate limit is checked (Redis)
-4. URL is validated and short code generated
-5. Stored in MongoDB
-6. Short URL returned
-
-### Redirect Flow
-
-1. Request hits `/short_code`
-2. Redis is checked first  
-3. If cache miss → MongoDB lookup  
-4. Result cached in Redis  
-5. User redirected  
-
----
-
-## API Endpoints
-
-### Generate API Key
-
-```http
-POST /api/key
-````
-
-```json
-{
-  "client": "frontend-app"
-}
+```mermaid
+graph TD
+    Client([Client HTTP Request]) --> Router[HTTP Router]
+    Router --> APIKeyAuth{API Key Valid?}
+    APIKeyAuth -- No --> 401[401 Unauthorized]
+    APIKeyAuth -- Yes --> RateLimit{Rate Limit < 10?}
+    RateLimit -- No --> 429[429 Too Many Requests]
+    RateLimit -- Yes --> Handler[URL Handler]
+    
+    Handler --> |Shorten Request| Mongo[(MongoDB)]
+    
+    Handler --> |Redirect Request| RedisCache{Redis Cache}
+    RedisCache -- Hit --> 302[302 Redirect]
+    RedisCache -- Miss --> Mongo
+    Mongo --> |Save to Cache| RedisCache
+    Mongo --> 302
 ```
 
----
+## 🛠️ Technology Stack
 
-### Create Short URL
-
-```http
-POST /shorten
-```
-
-Headers:
-
-```http
-X-API-Key: your_api_key
-```
-
-Body:
-
-```json
-{
-  "url": "https://google.com"
-}
-```
-
----
-
-### Redirect
-
-```http
-GET /{short_code}
-```
-
----
-
-## Rate Limiting
-
-* Fixed window rate limiting using Redis
-* Key format: `rate_limit:<apikey>`
-* Limit: **10 requests per minute per API key**
-
----
-
-## API Key Lifecycle
-
-* Generated via `/api/key`
-* Stored in MongoDB
-* Valid for **30 days**
-* Can be revoked (`active = false`)
-* Middleware validates:
-
-  * existence
-  * active status
-  * expiration
-
----
+- **Language**: Go (Golang)
+- **Primary Database**: MongoDB (Persistent storage for URLs and API Keys)
+- **Cache & Rate Limiter**: Redis (In-memory data structure store)
+- **Routing**: Standard Go `net/http` library
 
 ## Project Structure
 
+```text
+.
+├── cmd/
+│   └── main.go                  # Application entry point & route registration
+├── internal/
+│   ├── db/                      # Database connection logic (Mongo, Redis) & Indexes
+│   ├── handlers/                # HTTP request handlers (Core business logic)
+│   ├── middleware/              # Request interceptors (Auth, Rate Limiting)
+│   ├── models/                  # Data structures (BSON/JSON schemas)
+│   ├── services/                # Business services (API Key generation)
+│   └── utils/                   # Utility functions (Random String Generator)
+├── .env                         # Environment variables
+├── go.mod                       # Go module dependencies
+└── Readme.md                    # Project documentation
 ```
-internal/
-  db/
-  handlers/
-  middleware/
-  models/
-  services/
-```
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have the following installed on your local machine:
+- [Go](https://golang.org/doc/install) (v1.20+)
+- [MongoDB](https://www.mongodb.com/try/download/community) (Running on `localhost:27017`)
+- [Redis](https://redis.io/download) (Running on `localhost:6379`)
+
+### Installation & Execution
+
+1. **Navigate to the directory**:
+   ```bash
+   cd "URL shortner"
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   go mod download
+   ```
+
+3. **Start the server**:
+   ```bash
+   go run cmd/main.go
+   ```
+   *The server will start listening on port `8080`.*
 
 ---
 
-## Running Locally
+## API Documentation
 
-### Start MongoDB
+### 1. Generate API Key
+Generates a new API key for a client. Valid for 30 days.
 
-```
-mongodb://localhost:27017
-```
+- **URL**: `/api/key`
+- **Method**: `POST`
+- **Body**:
+  ```json
+  {
+    "client": "frontend-app"
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "api_key": "c4d...3f2",
+    "client": "frontend-app",
+    "expires_at": "2026-06-12T10:00:00Z"
+  }
+  ```
 
-### Start Redis
+### 2. Shorten URL
+Creates a short URL for the provided original URL. **Requires API Key.**
 
-```
-localhost:6379
-```
+- **URL**: `/shorten`
+- **Method**: `POST`
+- **Headers**: 
+  - `X-API-Key: <your_api_key>`
+- **Body**:
+  ```json
+  {
+    "url": "https://www.example.com/very/long/path",
+    "alias": "custom-name" // Optional
+  }
+  ```
+- **Success Response**:
+  ```json
+  {
+    "short_url": "http://localhost:8080/custom-name"
+  }
+  ```
+- **Error Responses**:
+  - `401 Unauthorized`: Missing, expired, or invalid API key.
+  - `429 Too Many Requests`: Exceeded 10 requests per minute limit.
+  - `400 Bad Request`: Invalid URL format.
+  - `409 Conflict`: Alias already taken.
 
-### Run Server
+### 3. Redirect
+Redirects the user to the original URL.
 
-```bash
-go run ./cmd/main.go
-```
+- **URL**: `/<short_code>`
+- **Method**: `GET`
+- **Behavior**: Fast redirects using Redis Cache-Aside pattern. Returns `404 Not Found` if the code does not exist.
 
 ---
 
-## Why This Project Matters
-
-This project goes beyond a basic URL shortener by implementing:
-
-* authentication via API keys
-* middleware-based request validation
-* Redis caching and rate limiting
-* clean backend architecture
-
-It reflects real-world backend design patterns used in production systems.
+##  Rate Limiting Mechanics
+- **Strategy**: Fixed Window Counter
+- **Storage**: Redis `INCR` and `EXPIRE` commands
+- **Limit**: 10 requests per minute, per API Key.
+- **Client Transparency**: Headers provided to the client include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After`.
 
 ---
-
-## Future Improvements
-
-* Usage analytics per API key
-* Tier-based rate limiting
-* Token bucket implementation
-* URL expiration
-* Docker setup
-
----
-
-## Author
-
-Channabasava Ballolli
-
-```
-```
+*Developed by Channabasava Ballolli*

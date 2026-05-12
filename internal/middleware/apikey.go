@@ -11,10 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func APIKeyMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func APIKeyMiddleware(next http.HandlerFunc) http.HandlerFunc { //th next func is the actual handler that should run later
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		apiKey := r.Header.Get("X-API-Key") //reads the header the key
+		apiKey := r.Header.Get("X-API-Key") //reads the header the key from http requst
 
 		if apiKey == "" {
 			http.Error(w, "API key required", http.StatusUnauthorized)

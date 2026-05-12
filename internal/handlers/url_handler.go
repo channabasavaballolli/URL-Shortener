@@ -1,17 +1,19 @@
 package handlers
 
 import (
-	"context"
+	"context"       //used for maintaining running operations
 	"encoding/json" // needed for decoding the json
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"url-shortener/internal/db"
+	"url-shortener/internal/email"
 	"url-shortener/internal/models"
 	"url-shortener/internal/utils"
 
-	"net/url"
+	"net/url" //used for parsing url
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -37,16 +39,9 @@ func URLShortener(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	// idCounter++
-	// code := encodeBase62(idCounter) //convert numeric ID into short code
+
 	var code string
 
-	// if req.Alias != "" {
-	// 	code = req.Alias
-	// } else {
-	// 	id := services.GetNextID()
-	// 	code = utils.EncodeBase62(id)
-	// }
 	if req.Alias != "" {
 		code = req.Alias
 	} else {
@@ -69,6 +64,8 @@ func URLShortener(w http.ResponseWriter, r *http.Request) {
 	doc := models.URLDocument{
 		ShortCode:   code,
 		OriginalURL: req.URL, //Means create a record in Go memory.
+		CreatedAt:   time.Now(),
+		ExpiresAt:   time.Now().AddDate(0, 0, 7),
 	}
 	var existing models.URLDocument
 
@@ -92,7 +89,29 @@ func URLShortener(w http.ResponseWriter, r *http.Request) {
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}
+	if req.Email != "" {
 
+		config := email.NewSMTPConfig() //loads SMTP configuration from envi variables
+
+		mail := email.Email{
+			To:          req.Email,
+			Subject:     "Short URL Created",
+			UserName:    req.Name,
+			OriginalURL: req.URL,
+			ShortURL:    baseURL + "/" + code,
+			Alias:       req.Alias,
+			CreatedAt:   doc.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:   doc.ExpiresAt.Format(time.RFC3339),
+		}
+		// fmt.Println("SMTP HOST:", config.Host)
+		// fmt.Println("SMTP PORT:", config.Port)
+		// fmt.Println("SMTP USER:", config.Username)
+		err = email.SendEmail(config, mail) //calls SMTP module
+
+		if err != nil {
+			fmt.Println("Email failed:", err)
+		}
+	}
 	resp := models.Response{
 		ShortURL: baseURL + "/" + code,
 	}
@@ -124,7 +143,7 @@ func RedirectHandler(w http.ResponseWriter, r *http.Request) {
 	//only if redis can't find
 	var result models.URLDocument
 
-	err = db.Collection.FindOne( // finds matching document
+	err = db.Collection.FindOne( // finds matching document in mongo DB
 		context.Background(),
 		bson.M{"short_code": code}, // filters the object
 	).Decode(&result) //Put DB result into Go struct.

@@ -7,8 +7,8 @@ import (
 	"github.com/redis/go-redis/v9" //Official Go client library for Redis.Which let's Go to talk to Redis server
 )
 
-var RedisClient *redis.Client //var for storing redis object for connction
-var Ctx = context.Background()
+var RedisClient *redis.Client  //var for storing redis object for connction
+var Ctx = context.Background() //creates a context with no timeout
 
 func ConnectRedis() { //connects redis to go app
 	RedisClient = redis.NewClient(&redis.Options{ //Create connection config.

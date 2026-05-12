@@ -57,7 +57,7 @@ func CreateAPIKeyHandler(w http.ResponseWriter, r *http.Request) { //runs when u
 
 	_, err = apiKeyCollection.InsertOne(ctx, apiKey) //stores document permanently in DB
 	if err != nil {
-		http.Error(w, "Failed to store key", http.StatusInternalServerError)
+		http.Error(w, "Failed to store key", http.StatusInternalServerError) //prints in the terminal
 		return
 	}
 

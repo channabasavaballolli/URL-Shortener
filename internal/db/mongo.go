@@ -10,13 +10,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// var idCounter int = 0                  //This simulates database auto-increment.
-// var urlStore = make(map[string]string) // A global var for mapping
-var Client *mongo.Client
+var Client *mongo.Client //two global variables start with capital letter so they are exported outside the package
 var Collection *mongo.Collection
 
 func ConnectDB() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //creates a context with timeout
 	defer cancel()
 
 	var err error
