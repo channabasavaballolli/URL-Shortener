@@ -17,9 +17,7 @@ func ConnectRedis() { //connects redis to go app
 
 	_, err := RedisClient.Ping(Ctx).Result() //Testing redis by sending a message
 	if err != nil {
-		// panic(err)
-		fmt.Println("Redis unavailable:", err)
-return
+		panic(err)
 	}
 
 	fmt.Println("Redis connected")
